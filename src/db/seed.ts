@@ -8,6 +8,7 @@ import {
   bookings,
   checkins,
   payments,
+  notifications,
 } from "./schema";
 import { hashPassword } from "../lib/password";
 
@@ -25,6 +26,7 @@ function dateOnly(n: number): string {
 async function seed() {
   console.log("Seeding FlexFit Studio...");
 
+  await db.delete(notifications);
   await db.delete(sessions);
   await db.delete(checkins);
   await db.delete(bookings);
@@ -251,12 +253,54 @@ async function seed() {
     })),
   );
 
+  // Add sample notifications
+  const sampleNotifications = [
+    {
+      userId: members[0].id,
+      type: "waitlist_promotion" as const,
+      title: "You've been promoted!",
+      message: "You have been promoted from the waitlist to a confirmed spot for Sunrise Yoga.",
+      read: false,
+    },
+    {
+      userId: members[1].id,
+      type: "class_cancelled" as const,
+      title: "Class cancelled",
+      message: "The HIIT Circuit class on Jul 23 has been cancelled by staff.",
+      read: false,
+    },
+    {
+      userId: members[2].id,
+      type: "membership_expiring" as const,
+      title: "Membership expiring soon",
+      message: "Your membership expires in 5 days. Renew now to avoid interruption.",
+      read: true,
+    },
+    {
+      userId: members[3].id,
+      type: "announcement" as const,
+      title: "New class added!",
+      message: "We've added a new Pilates class at 5pm on Wednesdays.",
+      read: false,
+    },
+    {
+      userId: members[0].id,
+      type: "announcement" as const,
+      title: "Studio maintenance",
+      message: "Studio A will be closed for maintenance on Jul 29. All classes have been rescheduled.",
+      read: false,
+    },
+  ];
+
+  await db.insert(notifications).values(sampleNotifications);
+
   console.log(`  users:       ${staff.length + members.length}`);
   console.log(`  plans:       ${plans.length}`);
   console.log(`  memberships: ${createdMemberships.length}`);
   console.log(`  classes:     ${createdClasses.length}`);
   console.log(`  bookings:    ${createdBookings.length}`);
   console.log(`  checkins:    ${attended.length}`);
+  console.log(`  notifications: ${sampleNotifications.length}`);
   console.log("Done.");
 }
 

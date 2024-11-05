@@ -8,6 +8,10 @@ export function NavBar() {
   const router = useRouter();
   const utils = trpc.useUtils();
   const { data: user } = trpc.auth.me.useQuery();
+  const { data: unreadCount } = trpc.notifications.unreadCount.useQuery(undefined, {
+    enabled: !!user,
+    refetchInterval: 30000,
+  });
 
   const logout = trpc.auth.logout.useMutation({
     onSuccess: async () => {
@@ -40,6 +44,19 @@ export function NavBar() {
         )}
 
         <div className="ml-auto flex items-center gap-3">
+          {user && (
+            <Link href="/notifications" className="relative">
+              <span className="text-sm">🔔</span>
+              {unreadCount && unreadCount > 0 && (
+                <span
+                  className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full text-xs font-semibold"
+                  style={{ backgroundColor: "var(--accent)" }}
+                >
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </Link>
+          )}
           {user ? (
             <>
               <span className="text-sm muted">{user.name}</span>

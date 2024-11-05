@@ -125,6 +125,23 @@ export const payments = sqliteTable("payments", {
     .default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const notifications = sqliteTable("notifications", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id),
+  type: text("type", {
+    enum: ["waitlist_promotion", "class_cancelled", "membership_expiring", "announcement"],
+  })
+    .notNull(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  read: integer("read", { mode: "boolean" }).notNull().default(false),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+});
+
 export type User = typeof users.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type MembershipPlan = typeof membershipPlans.$inferSelect;
@@ -133,3 +150,4 @@ export type GymClass = typeof classes.$inferSelect;
 export type Booking = typeof bookings.$inferSelect;
 export type Checkin = typeof checkins.$inferSelect;
 export type Payment = typeof payments.$inferSelect;
+export type Notification = typeof notifications.$inferSelect;

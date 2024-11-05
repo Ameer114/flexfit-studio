@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { trpc } from "@/lib/trpc";
 import { formatMoney, formatDateTime } from "@/lib/format";
 
@@ -24,7 +25,12 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-semibold tracking-tight">Admin</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold tracking-tight">Admin</h1>
+        <Link href="/admin/announcements" className="btn btn-sm">
+          Send announcement
+        </Link>
+      </div>
 
       <section className="grid gap-3 sm:grid-cols-3">
         {tiles.map(([label, value]) => (
