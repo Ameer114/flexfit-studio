@@ -27,9 +27,14 @@ export default function AdminPage() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight">Admin</h1>
-        <Link href="/admin/announcements" className="btn btn-sm">
-          Send announcement
-        </Link>
+        <div className="flex gap-2">
+          <Link href="/admin/reports" className="btn btn-sm">
+            Reports
+          </Link>
+          <Link href="/admin/announcements" className="btn btn-sm">
+            Send announcement
+          </Link>
+        </div>
       </div>
 
       <section className="grid gap-3 sm:grid-cols-3">

@@ -9,6 +9,7 @@ import {
   checkins,
   payments,
   notifications,
+  trainerAvailability,
 } from "./schema";
 import { hashPassword } from "../lib/password";
 
@@ -34,6 +35,7 @@ async function seed() {
   await db.delete(memberships);
   await db.delete(classes);
   await db.delete(membershipPlans);
+  await db.delete(trainerAvailability);
   await db.delete(users);
 
   const staff = await db
@@ -217,6 +219,29 @@ async function seed() {
   }
 
   const createdClasses = await db.insert(classes).values(classRows).returning();
+
+  await db.insert(trainerAvailability).values([
+    { trainerId: staff[1].id, dayOfWeek: 0, startTime: "06:00", endTime: "12:00" },
+    { trainerId: staff[1].id, dayOfWeek: 1, startTime: "06:00", endTime: "20:00" },
+    { trainerId: staff[1].id, dayOfWeek: 2, startTime: "06:00", endTime: "14:00" },
+    { trainerId: staff[1].id, dayOfWeek: 3, startTime: "08:00", endTime: "20:00" },
+    { trainerId: staff[1].id, dayOfWeek: 4, startTime: "06:00", endTime: "18:00" },
+    { trainerId: staff[1].id, dayOfWeek: 5, startTime: "07:00", endTime: "19:00" },
+    { trainerId: staff[1].id, dayOfWeek: 6, startTime: "08:00", endTime: "16:00" },
+    { trainerId: staff[2].id, dayOfWeek: 0, startTime: "08:00", endTime: "14:00" },
+    { trainerId: staff[2].id, dayOfWeek: 1, startTime: "08:00", endTime: "18:00" },
+    { trainerId: staff[2].id, dayOfWeek: 2, startTime: "10:00", endTime: "20:00" },
+    { trainerId: staff[2].id, dayOfWeek: 3, startTime: "08:00", endTime: "16:00" },
+    { trainerId: staff[2].id, dayOfWeek: 4, startTime: "09:00", endTime: "19:00" },
+    { trainerId: staff[2].id, dayOfWeek: 5, startTime: "08:00", endTime: "20:00" },
+    { trainerId: staff[2].id, dayOfWeek: 6, startTime: "10:00", endTime: "18:00" },
+    { trainerId: staff[3].id, dayOfWeek: 0, startTime: "12:00", endTime: "20:00" },
+    { trainerId: staff[3].id, dayOfWeek: 1, startTime: "12:00", endTime: "20:00" },
+    { trainerId: staff[3].id, dayOfWeek: 2, startTime: "12:00", endTime: "20:00" },
+    { trainerId: staff[3].id, dayOfWeek: 3, startTime: "12:00", endTime: "20:00" },
+    { trainerId: staff[3].id, dayOfWeek: 4, startTime: "12:00", endTime: "20:00" },
+    { trainerId: staff[3].id, dayOfWeek: 5, startTime: "12:00", endTime: "20:00" },
+  ]);
 
   const bookingRows: (typeof bookings.$inferInsert)[] = [];
   createdClasses.forEach((cls, ci) => {

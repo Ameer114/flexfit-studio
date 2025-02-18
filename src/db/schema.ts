@@ -142,6 +142,19 @@ export const notifications = sqliteTable("notifications", {
     .default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const trainerAvailability = sqliteTable("trainer_availability", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  trainerId: integer("trainer_id")
+    .notNull()
+    .references(() => users.id),
+  dayOfWeek: integer("day_of_week").notNull(),
+  startTime: text("start_time").notNull(),
+  endTime: text("end_time").notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+});
+
 export type User = typeof users.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type MembershipPlan = typeof membershipPlans.$inferSelect;
@@ -151,3 +164,4 @@ export type Booking = typeof bookings.$inferSelect;
 export type Checkin = typeof checkins.$inferSelect;
 export type Payment = typeof payments.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
+export type TrainerAvailability = typeof trainerAvailability.$inferSelect;
