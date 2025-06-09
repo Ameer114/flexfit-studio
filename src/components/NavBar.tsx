@@ -44,8 +44,19 @@ export function NavBar() {
         )}
 
         {user?.role === "admin" && (
-          <Link href="/admin" className="text-sm muted hover:text-white">
-            Admin
+          <>
+            <Link href="/admin" className="text-sm muted hover:text-white">
+              Admin
+            </Link>
+            <Link href="/admin/attendance" className="text-sm muted hover:text-white">
+              Attendance
+            </Link>
+          </>
+        )}
+
+        {(user?.role === "admin" || user?.role === "trainer") && (
+          <Link href="/kiosk" className="text-sm muted hover:text-white">
+            Kiosk
           </Link>
         )}
 

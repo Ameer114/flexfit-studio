@@ -130,4 +130,33 @@ export const membersRouter = router({
         .returning()
         .get();
     }),
+
+  lookupByEmailOrPhone: staffProcedure
+    .input(z.object({ query: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const term = `%${input.query.trim()}%`;
+      const user = await ctx.db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          phone: users.phone,
+          role: users.role,
+          active: users.active,
+        })
+        .from(users)
+        .where(
+          or(
+            like(users.email, term),
+            like(users.phone, term),
+          ),
+        )
+        .get();
+
+      if (!user || user.role !== "member") {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Member not found." });
+      }
+
+      return user;
+    }),
 });

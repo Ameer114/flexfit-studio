@@ -309,4 +309,50 @@ export const bookingsRouter = router({
         .where(eq(bookings.classId, input.classId))
         .orderBy(asc(bookings.bookedAt));
     }),
+
+  upcomingForMember: staffProcedure
+    .input(z.object({ userId: z.number(), hoursAhead: z.number().default(2) }))
+    .query(async ({ ctx, input }) => {
+      const now = new Date().toISOString();
+      const futureTime = new Date(Date.now() + input.hoursAhead * 60 * 60 * 1000).toISOString();
+
+      return ctx.db
+        .select({
+          bookingId: bookings.id,
+          bookingStatus: bookings.status,
+          classId: classes.id,
+          className: classes.name,
+          room: classes.room,
+          startsAt: classes.startsAt,
+          durationMin: classes.durationMin,
+          capacity: classes.capacity,
+          trainerId: classes.trainerId,
+          trainerName: users.name,
+        })
+        .from(bookings)
+        .innerJoin(classes, eq(bookings.classId, classes.id))
+        .leftJoin(users, eq(classes.trainerId, users.id))
+        .where(
+          and(
+            eq(bookings.userId, input.userId),
+            eq(bookings.status, "booked"),
+            sql`${classes.startsAt} >= ${now}`,
+            sql`${classes.startsAt} <= ${futureTime}`,
+            eq(classes.cancelled, false),
+          ),
+        )
+        .orderBy(classes.startsAt);
+    }),
+
+  checkinCountFor: staffProcedure
+    .input(z.object({ classId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const [result] = await ctx.db
+        .select({ count: sql<number>`count(*)` })
+        .from(checkins)
+        .innerJoin(bookings, eq(checkins.bookingId, bookings.id))
+        .where(eq(bookings.classId, input.classId));
+
+      return { count: Number(result?.count ?? 0) };
+    }),
 });
