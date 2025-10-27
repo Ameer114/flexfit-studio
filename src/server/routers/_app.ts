@@ -8,6 +8,8 @@ import { paymentsRouter } from "./payments";
 import { adminRouter } from "./admin";
 import { notificationsRouter } from "./notifications";
 import { trainersRouter } from "./trainers";
+import { corporateBookingsRouter } from "./corporate-bookings";
+import { adminCompaniesRouter } from "./admin-companies";
 
 export const appRouter = router({
   auth: authRouter,
@@ -15,8 +17,10 @@ export const appRouter = router({
   plans: plansRouter,
   classes: classesRouter,
   bookings: bookingsRouter,
+  corporateBookings: corporateBookingsRouter,
   payments: paymentsRouter,
   admin: adminRouter,
+  adminCompanies: adminCompaniesRouter,
   notifications: notificationsRouter,
   trainers: trainersRouter,
 });

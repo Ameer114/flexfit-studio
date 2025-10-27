@@ -10,6 +10,9 @@ import {
   payments,
   notifications,
   trainerAvailability,
+  companies,
+  companyMembers,
+  corporateBookings,
 } from "./schema";
 import { hashPassword } from "../lib/password";
 
@@ -27,6 +30,9 @@ function dateOnly(n: number): string {
 async function seed() {
   console.log("Seeding FlexFit Studio...");
 
+  await db.delete(corporateBookings);
+  await db.delete(companyMembers);
+  await db.delete(companies);
   await db.delete(notifications);
   await db.delete(sessions);
   await db.delete(checkins);
@@ -168,6 +174,36 @@ async function seed() {
     .insert(memberships)
     .values(membershipRows)
     .returning();
+
+  // Create companies and corporate members
+  const createdCompanies = await db
+    .insert(companies)
+    .values([
+      {
+        name: "TechCorp Inc",
+        contactEmail: "hr@techcorp.example.com",
+        creditPoolBalance: 100,
+        active: true,
+      },
+      {
+        name: "FinServe Solutions",
+        contactEmail: "wellness@finserve.example.com",
+        creditPoolBalance: 80,
+        active: true,
+      },
+    ])
+    .returning();
+
+  // Link some members to companies
+  const companyMemberLinks = [
+    { userId: members[0].id, companyId: createdCompanies[0].id },
+    { userId: members[1].id, companyId: createdCompanies[0].id },
+    { userId: members[2].id, companyId: createdCompanies[0].id },
+    { userId: members[3].id, companyId: createdCompanies[1].id },
+    { userId: members[4].id, companyId: createdCompanies[1].id },
+  ];
+
+  await db.insert(companyMembers).values(companyMemberLinks);
 
   await db.insert(payments).values(
     createdMemberships.map((ms, i) => ({
