@@ -355,4 +355,51 @@ export const bookingsRouter = router({
 
       return { count: Number(result?.count ?? 0) };
     }),
+
+  waitlisted: protectedProcedure.query(async ({ ctx }) => {
+    const waitlistedBookings = await ctx.db
+      .select({
+        bookingId: bookings.id,
+        classId: classes.id,
+        className: classes.name,
+        room: classes.room,
+        startsAt: classes.startsAt,
+        durationMin: classes.durationMin,
+        capacity: classes.capacity,
+        bookedAt: bookings.bookedAt,
+      })
+      .from(bookings)
+      .innerJoin(classes, eq(bookings.classId, classes.id))
+      .where(
+        and(
+          eq(bookings.userId, ctx.user.id),
+          eq(bookings.status, "waitlisted"),
+        ),
+      )
+      .orderBy(asc(classes.startsAt));
+
+    // For each waitlisted booking, calculate position in queue
+    const result = await Promise.all(
+      waitlistedBookings.map(async (wb) => {
+        const [{ position }] = await ctx.db
+          .select({ position: sql<number>`count(*)` })
+          .from(bookings)
+          .where(
+            and(
+              eq(bookings.classId, wb.classId),
+              eq(bookings.status, "waitlisted"),
+              sql`${bookings.bookedAt} < ${wb.bookedAt}`,
+            ),
+          );
+
+        return {
+          ...wb,
+          position: Number(position) + 1, // +1 because we're counting those before us
+        };
+      }),
+    );
+
+    return result;
+  }),
 });
+

@@ -32,9 +32,14 @@ export function NavBar() {
         </Link>
 
         {user && (
-          <Link href="/dashboard" className="text-sm muted hover:text-white">
-            My bookings
-          </Link>
+          <>
+            <Link href="/dashboard" className="text-sm muted hover:text-white">
+              My bookings
+            </Link>
+            <Link href="/waitlist" className="text-sm muted hover:text-white">
+              Waitlist
+            </Link>
+          </>
         )}
 
         {user?.role === "trainer" && (

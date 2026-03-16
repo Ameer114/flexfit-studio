@@ -13,6 +13,7 @@ import {
   companies,
   companyMembers,
   corporateBookings,
+  reschedules,
 } from "./schema";
 import { hashPassword } from "../lib/password";
 
@@ -30,6 +31,7 @@ function dateOnly(n: number): string {
 async function seed() {
   console.log("Seeding FlexFit Studio...");
 
+  await db.delete(reschedules);
   await db.delete(corporateBookings);
   await db.delete(companyMembers);
   await db.delete(companies);

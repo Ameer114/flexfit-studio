@@ -10,6 +10,7 @@ import { notificationsRouter } from "./notifications";
 import { trainersRouter } from "./trainers";
 import { corporateBookingsRouter } from "./corporate-bookings";
 import { adminCompaniesRouter } from "./admin-companies";
+import { reschedulesRouter } from "./reschedules";
 
 export const appRouter = router({
   auth: authRouter,
@@ -17,6 +18,7 @@ export const appRouter = router({
   plans: plansRouter,
   classes: classesRouter,
   bookings: bookingsRouter,
+  reschedules: reschedulesRouter,
   corporateBookings: corporateBookingsRouter,
   payments: paymentsRouter,
   admin: adminRouter,

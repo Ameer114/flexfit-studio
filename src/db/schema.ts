@@ -155,6 +155,28 @@ export const trainerAvailability = sqliteTable("trainer_availability", {
     .default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const reschedules = sqliteTable("reschedules", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id),
+  fromBookingId: integer("from_booking_id")
+    .notNull()
+    .references(() => bookings.id),
+  toBookingId: integer("to_booking_id")
+    .notNull()
+    .references(() => bookings.id),
+  fromClassId: integer("from_class_id")
+    .notNull()
+    .references(() => classes.id),
+  toClassId: integer("to_class_id")
+    .notNull()
+    .references(() => classes.id),
+  rescheduledAt: text("rescheduled_at")
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const companies = sqliteTable("companies", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
@@ -215,3 +237,4 @@ export type TrainerAvailability = typeof trainerAvailability.$inferSelect;
 export type Company = typeof companies.$inferSelect;
 export type CompanyMember = typeof companyMembers.$inferSelect;
 export type CorporateBooking = typeof corporateBookings.$inferSelect;
+export type Reschedule = typeof reschedules.$inferSelect;
