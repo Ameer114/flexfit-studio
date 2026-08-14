@@ -1,48 +1,59 @@
-1. Schedule nav option is broken
+# FlexFit Studio — Behavioral Audit & Domain Specification
 
-2.I can see there's a special case: plans with 999 credits are treated as "unlimited" and never decrement — that's a real business rule I found in the code
+This document records the exact behavior, domain rules, and edge cases discovered during initial code investigation. These specifications must be preserved across all refactoring.
 
-3. there's a real rule here too: cancel more than 12 hours before class start = free (credit refunded); cancel later and you keep the spot open but forfeit the credit. That's the kind of exact rule
+---
 
-4. A company buys a credit pool (one shared balance, companies.creditPoolBalance) rather than individual memberships. Its employees (companyMembers) book classes against that shared pool via corporateBookings — a near-duplicate of the regular bookings flow, but debiting the company's pool instead of a personal membership.
+## 1. Core Domain Rules
 
-book — a member booking a class
-Class must exist, not be cancelled, not have already started.
-Reject if this user already has a booked or waitlisted row for this class (no double-booking).
-Requires an active membership (found via activeMembershipFor — active status + endDate >= today). No membership → hard reject.
-Credit check: if creditsRemaining < creditCost and not unlimited (≥999) → reject.
-Counts existing booked rows for the class (waitlisted rows don't count toward capacity) → decides isFull.
-Inserts the booking: status: "waitlisted" if full, "booked" otherwise. Credits are only deducted if not full and not unlimited — a waitlisted booking spends 0 credits at booking time. That's an important rule: you only pay when you actually get a spot, not just for joining the waitlist.
+### Memberships & Credits
+- **Unlimited Credit Threshold**: Membership plans with `creditsRemaining >= 999` are treated as unlimited. Their credit balance is never decremented during booking or rescheduling.
+- **Active Membership Requirement**: A member can only book or reschedule classes if they possess an active membership (`status = 'active'` and `endDate >= today`).
 
-cancel — cancelling a booking
-Only the owner, or staff (admin/trainer), can cancel.
-Must currently be booked or waitlisted — can't cancel something already cancelled/attended.
-refundable = more than 12h before class start AND creditsUsed > 0. Note: a waitlisted booking always has creditsUsed: 0, so cancelling a waitlist spot never triggers a refund calc — correct, since no credit was ever spent on it.
-Sets status to cancelled, timestamps it.
-If refundable, credits go back onto the membership (capped so it never bumps someone up to the unlimited threshold).
-The waitlist promotion, only if the cancelled booking was "booked" (not if it was "waitlisted" — makes sense, freeing a waitlist spot doesn't free a class spot): finds the longest-waiting waitlisted row for that class (orderBy bookedAt asc), promotes it to "booked", and deducts that class's credit cost from their membership.
+### Cancellation Policies
+- **Individual Member Cancellation**: Members can cancel free of charge up to **12 hours** before the class start time (`FREE_CANCELLATION_HOURS = 12`).
+  - Cancelling $\ge 12\text{ hours}$ before start refunds the spent class credit back to the membership.
+  - Cancelling $< 12\text{ hours}$ releases the spot but forfeits the credit (`creditsUsed` is lost).
+- **Corporate Cancellation**: Corporate bookings require a **24-hour** cancellation window for credit refunds (`CORPORATE_FREE_CANCELLATION_HOURS = 24`). Refunded credits return directly to `companies.creditPoolBalance`.
 
+### Rescheduling Policy
+- **4-Hour Reschedule Window**: Members can reschedule a booking up to **4 hours** before class start (`FREE_RESCHEDULE_HOURS = 4`).
+- **Same Class Restriction**: A booking can only be rescheduled to another session of the **exact same class name**.
+- **Credit Continuity**: Rescheduling re-uses the original `creditsUsed` value without charging extra credits.
 
-This promotion logic is the single most fragile-looking piece in the file — it's doing a first-come-first-served promotion with its own credit deduction, separate from the book procedure's own deduction logic. This is exactly the kind of rule that needs a dedicated test: book class to capacity, waitlist one more, cancel a confirmed booking, assert the waitlisted person is now booked and their credits dropped.
+### Corporate Account Accounting
+- **Shared Pool Model**: Corporate accounts buy a shared credit balance (`companies.creditPoolBalance`). Linked employees (`companyMembers`) book classes against this shared pool rather than individual memberships.
 
+---
 
-markAttended (staff-only) — front desk / kiosk check-in
+## 2. Booking & Waitlist Workflows
 
-Only works on a booked row (not waitlisted, not already attended) → flips it to attended, logs a checkins row with the source. Straightforward.
+### Booking Procedure (`book`)
+1. **Validation**: Target class must exist, not be cancelled, and not have already started.
+2. **Duplicate Prevention**: Rejects if user is already `booked` or `waitlisted` for that class.
+3. **Membership Check**: Requires an active membership.
+4. **Credit Verification**: Requires `creditsRemaining >= class.creditCost` (unless unlimited plan $\ge 999$).
+5. **Capacity & Waitlisting**:
+   - Compares total confirmed spots against class capacity.
+   - If full: status is set to `"waitlisted"` with `creditsUsed = 0` (joining waitlist is free).
+   - If available: status is set to `"booked"`, `creditsUsed = class.creditCost`, and membership credits are decremented.
 
-Staff read queries
-rosterFor — attendee list for a class.
-upcomingForMember — a member's bookings starting within N hours (used by front desk to check someone in quickly, probably).
-checkinCountFor — how many actually checked in for a class. 
+### Cancellation Procedure (`cancel`)
+1. **Authorization**: Only the booking owner or staff (`admin` / `trainer`) can cancel.
+2. **Refund Logic**: Refund occurs if cancelled $\ge 12\text{ hours}$ before start AND `creditsUsed > 0` (waitlist cancellations never trigger refunds since 0 credits were charged).
+3. **Waitlist Auto-Promotion**:
+   - When a confirmed (`booked`) spot is cancelled, the oldest waitlisted booking (`orderBy asc(bookedAt)`) is automatically promoted to `"booked"`.
+   - The promoted member's active membership is charged the class credit cost.
 
+### Attendance Check-in (`markAttended`)
+- Staff procedure (front desk / kiosk / app).
+- Only confirmed (`booked`) spots can be checked in.
+- Flips status to `"attended"` and records a row in the `checkins` audit table.
 
-waitlisted — a member's own waitlist queue position
+---
 
-For each of the member's waitlisted bookings, it counts how many other waitlisted rows for that same class have an earlier bookedAt — that count + 1 = their position. Computed live, not stored. Fine for correctness, but note it's an N+1 query pattern (one query per waitlisted booking) — not a bug, but a legitimate "could be one query with a window function" optimization note if you want a small credit-worthy improvement later.
+## 3. Discovered Edge Cases & Audit Notes
 
-
-Booking requires an active, unexpired membership.
-Unlimited = creditsRemaining >= 999, never decrements.
-Capacity counts only booked status; over capacity → auto-waitlist, 0 credits charged.
-Refund only if cancelled >12h before start and credits were actually spent.
-Cancelling a booked (not waitlisted) spot auto-promotes the longest-waiting waitlisted person, charging them.
+- **Schedule Navigation**: Verify navigation links to `/schedule` render active schedules correctly.
+- **Waitlist FIFO Order**: Auto-promotion relies strictly on `bookedAt` ascending timestamp order (First-Come-First-Served).
+- **Waitlist Queue Position**: Queue positions are computed dynamically based on how many members joined the waitlist for that class at an earlier timestamp (`bookedAt < myBookedAt`).
