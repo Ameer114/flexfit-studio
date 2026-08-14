@@ -111,3 +111,13 @@ export async function getWaitlistQueuePosition(
   return Number(position ?? 0) + 1;
 }
 
+/**
+ * Adds a specified number of days to an ISO date string and returns YYYY-MM-DD string.
+ */
+export function addDays(dateIso: string, days: number): string {
+  const d = new Date(dateIso);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+

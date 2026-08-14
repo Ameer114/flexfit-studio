@@ -45,3 +45,21 @@ Improves query readability/maintainability and ensures corporate attendance logg
 ### Justification
 Ensures immediate account revocation upon deactivation and standardizes session handling across authentication workflows.
 
+## Decision 4: Membership Subscription Management & Payment Refund Safety
+
+### Problem Discovered
+1. **In-Memory Filtering**: `plans.ts` fetched all membership plans and filtered inactive items in JS.
+2. **Membership Stacking Bug**: Subscribing to a new plan created a new `active` membership without expiring previous active plans.
+3. **Refund Orphan Bookings**: Refunding a payment cancelled the membership but left future class bookings active.
+4. **Date Helper Duplication**: `addDays()` helper was defined inline in `plans.ts`.
+
+### Solution
+- Added `.where(eq(membershipPlans.active, true))` SQL filter in `plans.list`.
+- Updated `subscribe` in `plans.ts` to set previous active memberships to `"expired"`.
+- Updated `refund` in `payments.ts` to cancel future confirmed bookings linked to the refunded membership.
+- Extracted `addDays()` to `src/lib/booking-utils.ts`.
+
+### Justification
+Prevents orphaned active memberships, secures credit refund integrity, and optimizes SQL queries.
+
+

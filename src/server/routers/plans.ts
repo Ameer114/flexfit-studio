@@ -1,21 +1,21 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { membershipPlans, memberships, payments } from "@/db/schema";
 import { router, publicProcedure, protectedProcedure, adminProcedure } from "../trpc";
-
-function addDays(dateIso: string, days: number): string {
-  const d = new Date(dateIso);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
+import { addDays } from "@/lib/booking-utils";
 
 export const plansRouter = router({
   list: publicProcedure
     .input(z.object({ includeInactive: z.boolean().default(false) }).default({}))
     .query(async ({ ctx, input }) => {
-      const rows = await ctx.db.select().from(membershipPlans);
-      return input.includeInactive ? rows : rows.filter((p) => p.active);
+      if (input.includeInactive) {
+        return ctx.db.select().from(membershipPlans);
+      }
+      return ctx.db
+        .select()
+        .from(membershipPlans)
+        .where(eq(membershipPlans.active, true));
     }),
 
   subscribe: protectedProcedure
@@ -43,6 +43,17 @@ export const plansRouter = router({
       }
 
       const today = new Date().toISOString().slice(0, 10);
+
+      // Expire previous active memberships to prevent multiple active memberships stacking
+      await ctx.db
+        .update(memberships)
+        .set({ status: "expired" })
+        .where(
+          and(
+            eq(memberships.userId, ctx.user.id),
+            eq(memberships.status, "active"),
+          ),
+        );
 
       const membership = await ctx.db
         .insert(memberships)

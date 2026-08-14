@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { desc, eq } from "drizzle-orm";
-import { payments, users, memberships, membershipPlans } from "@/db/schema";
+import { and, desc, eq } from "drizzle-orm";
+import { payments, users, memberships, membershipPlans, bookings } from "@/db/schema";
 import { router, protectedProcedure, adminProcedure } from "../trpc";
 
 export const paymentsRouter = router({
@@ -101,6 +101,20 @@ export const paymentsRouter = router({
           .update(memberships)
           .set({ status: "cancelled" })
           .where(eq(memberships.id, row.membershipId));
+
+        // Cancel associated active bookings linked to this refunded membership
+        await ctx.db
+          .update(bookings)
+          .set({
+            status: "cancelled",
+            cancelledAt: new Date().toISOString(),
+          })
+          .where(
+            and(
+              eq(bookings.membershipId, row.membershipId),
+              eq(bookings.status, "booked"),
+            ),
+          );
       }
 
       return updated;
