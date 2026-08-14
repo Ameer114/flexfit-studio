@@ -9,7 +9,8 @@ import {
   getTotalBookedCountForClass, 
   FREE_CANCELLATION_HOURS, 
   UNLIMITED_CREDITS, 
-  isRefundableCancellation 
+  isRefundableCancellation,
+  getWaitlistQueuePosition 
 } from "@/lib/booking-utils";
 
 /**
@@ -355,23 +356,10 @@ export const bookingsRouter = router({
 
     // For each waitlisted booking, calculate position in queue
     const result = await Promise.all(
-      waitlistedBookings.map(async (wb) => {
-        const [{ position }] = await ctx.db
-          .select({ position: sql<number>`count(*)` })
-          .from(bookings)
-          .where(
-            and(
-              eq(bookings.classId, wb.classId),
-              eq(bookings.status, "waitlisted"),
-              sql`${bookings.bookedAt} < ${wb.bookedAt}`,
-            ),
-          );
-
-        return {
-          ...wb,
-          position: Number(position) + 1, // +1 because we're counting those before us
-        };
-      }),
+      waitlistedBookings.map(async (wb) => ({
+        ...wb,
+        position: await getWaitlistQueuePosition(ctx.db, wb.classId, wb.bookedAt),
+      })),
     );
 
     return result;

@@ -88,3 +88,26 @@ export function isRescheduleAllowed(
 ): boolean {
   return hoursUntil(startsAtIso) >= freeRescheduleHours;
 }
+
+/**
+ * Calculates a member's position in the waitlist for a class based on bookedAt timestamp.
+ */
+export async function getWaitlistQueuePosition(
+  dbClient: typeof db,
+  classId: number,
+  bookedAt: string,
+): Promise<number> {
+  const [{ position }] = await dbClient
+    .select({ position: sql<number>`count(*)` })
+    .from(bookings)
+    .where(
+      and(
+        eq(bookings.classId, classId),
+        eq(bookings.status, "waitlisted"),
+        sql`${bookings.bookedAt} < ${bookedAt}`,
+      ),
+    );
+
+  return Number(position ?? 0) + 1;
+}
+

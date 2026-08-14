@@ -292,6 +292,7 @@ export const corporateBookingsRouter = router({
       await ctx.db.insert(checkins).values({
         userId: booking.userId,
         bookingId: null,
+        source: input.source,
       });
 
       return { ok: true };
