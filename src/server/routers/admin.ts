@@ -1,10 +1,12 @@
 import { z } from "zod";
 import { and, eq, gte, sql, lte, desc, inArray } from "drizzle-orm";
+import { alias } from "drizzle-orm/sqlite-core";
 import {
   users,
   memberships,
   classes,
   bookings,
+  corporateBookings,
   payments,
   checkins,
   membershipPlans,
@@ -70,9 +72,10 @@ export const adminRouter = router({
           startsAt: classes.startsAt,
           capacity: classes.capacity,
           booked: sql<number>`(
-            select count(*) from ${bookings}
-            where ${bookings.classId} = ${classes.id}
-              and ${bookings.status} in ('booked','attended')
+            select (
+              (select count(*) from ${bookings} where ${bookings.classId} = ${classes.id} and ${bookings.status} in ('booked','attended')) +
+              (select count(*) from ${corporateBookings} where ${corporateBookings.classId} = ${classes.id} and ${corporateBookings.status} in ('booked','attended'))
+            )
           )`.as("booked"),
         })
         .from(classes)
@@ -219,6 +222,8 @@ export const adminRouter = router({
     start.setDate(start.getDate() - 14);
     const startStr = start.toISOString().slice(0, 10);
 
+    const trainerUser = alias(users, "trainerUser");
+
     const rows = await ctx.db
       .select({
         bookingId: bookings.id,
@@ -228,10 +233,12 @@ export const adminRouter = router({
         className: classes.name,
         classDate: classes.startsAt,
         trainerId: classes.trainerId,
+        trainerName: trainerUser.name,
       })
       .from(bookings)
       .innerJoin(classes, eq(bookings.classId, classes.id))
       .innerJoin(users, eq(bookings.userId, users.id))
+      .leftJoin(trainerUser, eq(classes.trainerId, trainerUser.id))
       .where(
         and(
           eq(bookings.status, "no_show"),
@@ -239,20 +246,6 @@ export const adminRouter = router({
         ),
       )
       .orderBy(sql`${classes.startsAt} DESC`);
-
-    const trainerIds = [...new Set(rows.map((r) => r.trainerId).filter((id) => id != null))];
-    const trainers = new Map<number | null, string>();
-
-    if (trainerIds.length > 0) {
-      const trainerRows = await ctx.db
-        .select({ id: users.id, name: users.name })
-        .from(users)
-        .where(inArray(users.id, trainerIds as number[]));
-
-      trainerRows.forEach((t) => {
-        trainers.set(t.id, t.name);
-      });
-    }
 
     return rows.map((r) => ({
       bookingId: r.bookingId,
@@ -262,7 +255,7 @@ export const adminRouter = router({
       className: r.className,
       classDate: r.classDate,
       trainerId: r.trainerId,
-      trainerName: r.trainerId ? trainers.get(r.trainerId) : undefined,
+      trainerName: r.trainerName ?? undefined,
     }));
   }),
 });

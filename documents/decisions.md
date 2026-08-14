@@ -62,4 +62,20 @@ Ensures immediate account revocation upon deactivation and standardizes session 
 ### Justification
 Prevents orphaned active memberships, secures credit refund integrity, and optimizes SQL queries.
 
+## Decision 5: Unified Utilization Analytics & Middleware-Based Trainer Authorization
+
+### Problem Discovered
+1. **Utilization Analytics Defect**: `admin.ts` `classUtilisation` query calculated booked class counts by querying only `bookings`, underreporting utilization for classes attended by corporate members.
+2. **Duplicated Role Checks**: `trainers.ts` duplicated `if (ctx.user.role !== "trainer")` checks across all procedure handlers.
+3. **Manual Query Stitching**: `noShowList` fired a secondary SQL query and used in-memory JavaScript Maps to attach trainer names to no-show records.
+
+### Solution
+- Updated `classUtilisation` SQL query in `admin.ts` to sum confirmed spots across both `bookings` and `corporateBookings`.
+- Added `trainerProcedure` in `trpc.ts` to enforce trainer authorization at the middleware level.
+- Refactored `noShowList` to join trainer user details directly in SQL.
+
+### Justification
+Provides 100% accurate utilization reporting, cleans up repetitive authorization boilerplate, and eliminates multi-step SQL queries.
+
+
 
