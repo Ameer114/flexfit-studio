@@ -30,3 +30,18 @@ Preserves strict class capacity limits while removing duplicated helper code acr
 
 ### Justification
 Improves query readability/maintainability and ensures corporate attendance logging accurately captures check-in channels.
+
+## Decision 3: Deactivated User Session Validation & Session Utility Extraction
+
+### Problem Discovered
+1. **Deactivated Account Bypass Bug**: `createContext()` in `trpc.ts` fetched sessions without verifying `user.active`. Deactivated users holding active session cookies could still authenticate for protected tRPC procedures.
+2. **Duplicated Session Creation**: Session token generation and cookie setting was embedded inline inside `auth.ts` `login` mutation.
+
+### Solution
+- Updated `createContext()` in `trpc.ts` to require `row.user.active === true`.
+- Extracted session creation into a reusable `createSession(db, userId)` helper in `auth.ts` enforcing security flags (`httpOnly`, `sameSite: "lax"`, `secure`).
+- Updated `register` mutation to issue a session token automatically.
+
+### Justification
+Ensures immediate account revocation upon deactivation and standardizes session handling across authentication workflows.
+

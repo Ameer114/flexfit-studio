@@ -14,6 +14,29 @@ import {
 
 const SESSION_DAYS = 30;
 
+async function createSession(dbClient: typeof import("@/db").db, userId: number) {
+  const token = randomBytes(32).toString("hex");
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + SESSION_DAYS);
+
+  await dbClient.insert(sessions).values({
+    userId,
+    token,
+    expiresAt: expiresAt.toISOString(),
+  });
+
+  const store = await cookies();
+  store.set(SESSION_COOKIE, token, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    secure: process.env.NODE_ENV === "production",
+    expires: expiresAt,
+  });
+
+  return token;
+}
+
 export const authRouter = router({
   me: publicProcedure.query(({ ctx }) => ctx.user),
 
@@ -40,23 +63,7 @@ export const authRouter = router({
         });
       }
 
-      const token = randomBytes(32).toString("hex");
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + SESSION_DAYS);
-
-      await ctx.db.insert(sessions).values({
-        userId: user.id,
-        token,
-        expiresAt: expiresAt.toISOString(),
-      });
-
-      const store = await cookies();
-      store.set(SESSION_COOKIE, token, {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        expires: expiresAt,
-      });
+      await createSession(ctx.db, user.id);
 
       return { id: user.id, name: user.name, role: user.role };
     }),
@@ -96,6 +103,8 @@ export const authRouter = router({
         })
         .returning()
         .get();
+
+      await createSession(ctx.db, created.id);
 
       return { id: created.id, name: created.name };
     }),

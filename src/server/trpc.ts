@@ -21,7 +21,7 @@ export async function createContext() {
       .where(eq(sessions.token, token))
       .get();
 
-    if (row && new Date(row.session.expiresAt) > new Date()) {
+    if (row && row.user.active && new Date(row.session.expiresAt) > new Date()) {
       user = row.user;
     }
   }
