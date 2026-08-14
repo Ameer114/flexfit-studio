@@ -77,5 +77,19 @@ Prevents orphaned active memberships, secures credit refund integrity, and optim
 ### Justification
 Provides 100% accurate utilization reporting, cleans up repetitive authorization boilerplate, and eliminates multi-step SQL queries.
 
+## Decision 6: Class Schedule Capacity & Cancellation Cascade
+
+### Problem Discovered
+1. **False Schedule Capacity**: `classes.list` calculated `spotsLeft` and `full` by counting only `bookings`, causing the Schedule page (`/schedule`) to report full classes as empty if booked by corporate members.
+2. **Orphan Corporate Class Cancellation**: When an admin cancelled a class (`classes.cancel`), it cancelled `bookings` rows but left `corporateBookings` rows active.
+
+### Solution
+- Updated `classes.list` subquery to sum confirmed bookings across both `bookings` and `corporateBookings` tables.
+- Updated `classes.cancel` to cancel active bookings in both `bookings` and `corporateBookings` tables.
+
+### Justification
+Ensures accurate Schedule UI capacity indicators and complete booking cancellation cascades across all channel types.
+
+
 
 

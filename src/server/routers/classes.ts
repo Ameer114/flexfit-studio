@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { and, asc, eq, gte, lte, sql } from "drizzle-orm";
-import { classes, bookings, users } from "@/db/schema";
+import { classes, bookings, corporateBookings, users } from "@/db/schema";
 import { router, publicProcedure, staffProcedure, adminProcedure } from "../trpc";
 
 export const classesRouter = router({
@@ -34,9 +34,10 @@ export const classesRouter = router({
           cancelled: classes.cancelled,
           trainerName: users.name,
           booked: sql<number>`(
-            select count(*) from ${bookings}
-            where ${bookings.classId} = ${classes.id}
-              and ${bookings.status} = 'booked'
+            select (
+              (select count(*) from ${bookings} where ${bookings.classId} = ${classes.id} and ${bookings.status} = 'booked') +
+              (select count(*) from ${corporateBookings} where ${corporateBookings.classId} = ${classes.id} and ${corporateBookings.status} = 'booked')
+            )
           )`.as("booked"),
         })
         .from(classes)
@@ -143,11 +144,20 @@ export const classesRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Class not found." });
       }
 
+      const nowIso = new Date().toISOString();
+
       await ctx.db
         .update(bookings)
-        .set({ status: "cancelled", cancelledAt: new Date().toISOString() })
+        .set({ status: "cancelled", cancelledAt: nowIso })
         .where(
           and(eq(bookings.classId, input.id), eq(bookings.status, "booked")),
+        );
+
+      await ctx.db
+        .update(corporateBookings)
+        .set({ status: "cancelled", cancelledAt: nowIso })
+        .where(
+          and(eq(corporateBookings.classId, input.id), eq(corporateBookings.status, "booked")),
         );
 
       return cls;
