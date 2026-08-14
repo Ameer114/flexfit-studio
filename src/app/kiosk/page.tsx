@@ -165,7 +165,7 @@ export default function KioskPage() {
                           source: "kiosk",
                         })
                       }
-                      disabled={markAttended.isPending || isMembershipExpired || hasNoCredits}
+                      disabled={markAttended.isPending || isMembershipExpired}
                       className="btn btn-primary btn-sm ml-4"
                     >
                       Check in

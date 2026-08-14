@@ -127,6 +127,20 @@ Improves user navigation and prevents redundant reschedule submission errors in 
 ### Justification
 Eliminates server request spam and restores responsive schedule page rendering.
 
+## Decision 10: Kiosk Check-in Logic & Unlimited Credit Constant Import
+
+### Problem Discovered
+1. **Kiosk Check-in Block Bug**: `kiosk/page.tsx` disabled check-in if a member's current `creditsRemaining === 0`. Because credit deduction happens at booking time, members who spent their last credit to reserve a class were blocked from checking in at the gym kiosk.
+2. **Magic Number Litter**: UI pages used inline `999` checks for unlimited credit display logic.
+
+### Solution
+- Removed `hasNoCredits` check-in blocking in `kiosk/page.tsx`.
+- Imported `UNLIMITED_CREDITS` from `@/lib/booking-utils` in `dashboard/page.tsx` and `plans/page.tsx`.
+
+### Justification
+Allows members who spent their last credit on a class to check in successfully and centralizes policy constants.
+
+
 
 
 
