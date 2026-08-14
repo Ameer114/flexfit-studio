@@ -116,6 +116,18 @@ Prevents database pollution on inactive accounts and guarantees predictable sear
 ### Justification
 Improves user navigation and prevents redundant reschedule submission errors in the UI.
 
+## Decision 9: Fix Infinite Re-fetch Loop on Schedule Page
+
+### Problem Discovered
+- `/schedule` page passed `from: new Date().toISOString()` inline to `useQuery`. This evaluated a new timestamp string on every component render, causing React Query to continuously invalidate the cache key and trigger an infinite HTTP fetch loop.
+
+### Solution
+- Stabilized `from` query parameter using `useState(() => new Date().toISOString())`.
+
+### Justification
+Eliminates server request spam and restores responsive schedule page rendering.
+
+
 
 
 
