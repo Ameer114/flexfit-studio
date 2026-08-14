@@ -36,9 +36,9 @@ export function RescheduleModal({
     }
   );
 
-  // Filter to only same-name classes (excluding the original)
+  // Filter to only same-name classes (excluding the original class)
   const sameNameClasses = (availableClasses || []).filter(
-    (cls) => cls.name === fromClassName
+    (cls) => cls.name === fromClassName && cls.startsAt !== fromClassTime
   );
 
   const reschedule = trpc.reschedules.reschedule.useMutation({

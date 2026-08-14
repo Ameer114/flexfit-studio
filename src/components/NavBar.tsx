@@ -36,6 +36,9 @@ export function NavBar() {
             <Link href="/dashboard" className="text-sm muted hover:text-white">
               My bookings
             </Link>
+            <Link href="/plans" className="text-sm muted hover:text-white">
+              Plans
+            </Link>
             <Link href="/waitlist" className="text-sm muted hover:text-white">
               Waitlist
             </Link>

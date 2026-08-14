@@ -103,6 +103,20 @@ Ensures accurate Schedule UI capacity indicators and complete booking cancellati
 ### Justification
 Prevents database pollution on inactive accounts and guarantees predictable search behavior.
 
+## Decision 8: Navigation Accessibility & Reschedule Modal UI Polish
+
+### Problem Discovered
+1. **Missing Plans Link**: Logged-in users had no header link to access the membership plans page (`/plans`).
+2. **Reschedule Self-Selection**: `RescheduleModal` listed the member's current class session among available target reschedule slots.
+
+### Solution
+- Added `/plans` link to `NavBar.tsx` for logged-in members.
+- Added current class slot filtering (`cls.startsAt !== fromClassTime`) to `RescheduleModal`.
+
+### Justification
+Improves user navigation and prevents redundant reschedule submission errors in the UI.
+
+
 
 
 
