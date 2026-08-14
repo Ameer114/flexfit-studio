@@ -56,7 +56,7 @@ export const notificationsRouter = router({
       const activeMembers = await ctx.db
         .select({ id: users.id })
         .from(users)
-        .where(eq(users.role, "member"));
+        .where(and(eq(users.role, "member"), eq(users.active, true)));
 
       if (activeMembers.length === 0) {
         return { ok: true, count: 0 };

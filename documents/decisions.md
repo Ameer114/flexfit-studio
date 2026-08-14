@@ -90,6 +90,20 @@ Provides 100% accurate utilization reporting, cleans up repetitive authorization
 ### Justification
 Ensures accurate Schedule UI capacity indicators and complete booking cancellation cascades across all channel types.
 
+## Decision 7: Broadcast Target Filtering & Input Validation
+
+### Problem Discovered
+1. **Deactivated Notification Broadcast**: `notifications.ts` broadcast announcements to all users with `role = "member"`, including deactivated accounts.
+2. **Empty Search Wildcard Match**: `members.ts` `lookupByEmailOrPhone` executed wildcard `%` searches when provided an empty query, returning arbitrary first-row matches.
+
+### Solution
+- Updated `notifications.ts` `broadcast` query to require `and(eq(users.role, "member"), eq(users.active, true))`.
+- Added input trimming and non-empty string validation to `lookupByEmailOrPhone`.
+
+### Justification
+Prevents database pollution on inactive accounts and guarantees predictable search behavior.
+
+
 
 
 

@@ -134,7 +134,14 @@ export const membersRouter = router({
   lookupByEmailOrPhone: staffProcedure
     .input(z.object({ query: z.string() }))
     .query(async ({ ctx, input }) => {
-      const term = `%${input.query.trim()}%`;
+      const trimmed = input.query.trim();
+      if (!trimmed) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Search query cannot be empty.",
+        });
+      }
+      const term = `%${trimmed}%`;
       const user = await ctx.db
         .select({
           id: users.id,
