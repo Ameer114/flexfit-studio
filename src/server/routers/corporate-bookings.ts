@@ -10,16 +10,19 @@ import {
   users,
 } from "@/db/schema";
 import { router, protectedProcedure, staffProcedure } from "../trpc";
+import { 
+  hoursUntil, 
+  getTotalBookedCountForClass, 
+  CORPORATE_FREE_CANCELLATION_HOURS, 
+  isRefundableCancellation 
+} from "@/lib/booking-utils";
+
 
 /**
  * Corporate members may cancel free of charge up to this many hours before
  * the class starts. Cancelling later still frees the spot but forfeits the credit.
  */
-export const CORPORATE_FREE_CANCELLATION_HOURS = 24;
 
-function hoursUntil(iso: string, now = new Date()): number {
-  return (new Date(iso).getTime() - now.getTime()) / 36e5;
-}
 
 async function getCompanyForMember(
   db: typeof import("@/db").db,
@@ -128,17 +131,8 @@ export const corporateBookingsRouter = router({
         });
       }
 
-      const [{ count }] = await ctx.db
-        .select({ count: sql<number>`count(*)` })
-        .from(corporateBookings)
-        .where(
-          and(
-            eq(corporateBookings.classId, cls.id),
-            eq(corporateBookings.status, "booked"),
-          ),
-        );
-
-      const isFull = Number(count) >= cls.capacity;
+      const totalBooked = await getTotalBookedCountForClass(ctx.db, cls.id);
+      const isFull = totalBooked >= cls.capacity;
 
       const created = await ctx.db
         .insert(corporateBookings)
@@ -194,9 +188,11 @@ export const corporateBookingsRouter = router({
         });
       }
 
-      const refundable =
-        hoursUntil(row.cls.startsAt) >= CORPORATE_FREE_CANCELLATION_HOURS &&
-        row.booking.creditsUsed > 0;
+      const refundable = isRefundableCancellation(
+  row.cls.startsAt, 
+  row.booking.creditsUsed, 
+  CORPORATE_FREE_CANCELLATION_HOURS
+);
 
       await ctx.db
         .update(corporateBookings)

@@ -3,38 +3,19 @@ import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { bookings, classes, memberships, checkins, users } from "@/db/schema";
 import { router, protectedProcedure, staffProcedure } from "../trpc";
+import { 
+  hoursUntil, 
+  activeMembershipFor, 
+  getTotalBookedCountForClass, 
+  FREE_CANCELLATION_HOURS, 
+  UNLIMITED_CREDITS, 
+  isRefundableCancellation 
+} from "@/lib/booking-utils";
 
 /**
  * Members may cancel free of charge up to this many hours before the class
  * starts. Cancelling later still frees the spot but forfeits the credit.
  */
-export const FREE_CANCELLATION_HOURS = 12;
-
-/** Plans with this many credits are treated as unlimited and never decrement. */
-export const UNLIMITED_CREDITS = 999;
-
-function hoursUntil(iso: string, now = new Date()): number {
-  return (new Date(iso).getTime() - now.getTime()) / 36e5;
-}
-
-async function activeMembershipFor(
-  db: typeof import("@/db").db,
-  userId: number,
-) {
-  const today = new Date().toISOString().slice(0, 10);
-  return db
-    .select()
-    .from(memberships)
-    .where(
-      and(
-        eq(memberships.userId, userId),
-        eq(memberships.status, "active"),
-        sql`${memberships.endDate} >= ${today}`,
-      ),
-    )
-    .orderBy(desc(memberships.endDate))
-    .get();
-}
 
 export const bookingsRouter = router({
   mine: protectedProcedure
@@ -124,14 +105,8 @@ export const bookingsRouter = router({
         });
       }
 
-      const [{ count }] = await ctx.db
-        .select({ count: sql<number>`count(*)` })
-        .from(bookings)
-        .where(
-          and(eq(bookings.classId, cls.id), eq(bookings.status, "booked")),
-        );
-
-      const isFull = Number(count) >= cls.capacity;
+      const totalBooked = await getTotalBookedCountForClass(ctx.db, cls.id);
+      const isFull = totalBooked >= cls.capacity;
 
       const created = await ctx.db
         .insert(bookings)
@@ -184,11 +159,11 @@ export const bookingsRouter = router({
           message: "This booking is no longer active.",
         });
       }
-
-      const refundable =
-        hoursUntil(row.cls.startsAt) >= FREE_CANCELLATION_HOURS &&
-        row.booking.creditsUsed > 0;
-
+      const refundable = isRefundableCancellation(
+        row.cls.startsAt, 
+        row.booking.creditsUsed, 
+        FREE_CANCELLATION_HOURS
+      );
       await ctx.db
         .update(bookings)
         .set({ status: "cancelled", cancelledAt: new Date().toISOString() })

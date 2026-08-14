@@ -8,35 +8,20 @@ import {
   memberships,
 } from "@/db/schema";
 import { router, protectedProcedure } from "../trpc";
+import { 
+  hoursUntil, 
+  activeMembershipFor, 
+  getTotalBookedCountForClass, 
+  FREE_RESCHEDULE_HOURS, 
+  isRescheduleAllowed 
+} from "@/lib/booking-utils";
+
 
 /**
  * Members may reschedule free of charge up to this many hours before the
  * original class starts. This is more generous than cancellation policy.
  */
-export const FREE_RESCHEDULE_HOURS = 4;
 
-function hoursUntil(iso: string, now = new Date()): number {
-  return (new Date(iso).getTime() - now.getTime()) / 36e5;
-}
-
-async function activeMembershipFor(
-  db: typeof import("@/db").db,
-  userId: number,
-) {
-  const today = new Date().toISOString().slice(0, 10);
-  return db
-    .select()
-    .from(memberships)
-    .where(
-      and(
-        eq(memberships.userId, userId),
-        eq(memberships.status, "active"),
-        sql`${memberships.endDate} >= ${today}`,
-      ),
-    )
-    .orderBy(desc(memberships.endDate))
-    .get();
-}
 
 export const reschedulesRouter = router({
   reschedule: protectedProcedure
@@ -85,8 +70,7 @@ export const reschedulesRouter = router({
       }
 
       // Verify reschedule is allowed (within 4 hours of original class)
-      const hoursBeforeOriginal = hoursUntil(originalClass.startsAt);
-      if (hoursBeforeOriginal < FREE_RESCHEDULE_HOURS) {
+     if (!isRescheduleAllowed(originalClass.startsAt, FREE_RESCHEDULE_HOURS)) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: `You can only reschedule up to ${FREE_RESCHEDULE_HOURS} hours before the class starts.`,
@@ -160,14 +144,8 @@ export const reschedulesRouter = router({
       }
 
       // Check if target class is full
-      const [{ count }] = await ctx.db
-        .select({ count: sql<number>`count(*)` })
-        .from(bookings)
-        .where(
-          and(eq(bookings.classId, targetClass.id), eq(bookings.status, "booked")),
-        );
-
-      const targetIsFull = Number(count) >= targetClass.capacity;
+      const targetTotalBooked = await getTotalBookedCountForClass(ctx.db, targetClass.id);
+      const targetIsFull = targetTotalBooked >= targetClass.capacity;
 
       // Get the membership to check for unlimited credits
       const membership = originalBooking.membershipId
@@ -292,8 +270,7 @@ export const reschedulesRouter = router({
       }
 
       // Verify reschedule is allowed (within 4 hours of original class)
-      const hoursBeforeOriginal = hoursUntil(originalClass.startsAt);
-      if (hoursBeforeOriginal < FREE_RESCHEDULE_HOURS) {
+     if (!isRescheduleAllowed(originalClass.startsAt, FREE_RESCHEDULE_HOURS)) {
         return {
           valid: false,
           reason: `You can only reschedule up to ${FREE_RESCHEDULE_HOURS} hours before the class starts.`,
@@ -364,15 +341,9 @@ export const reschedulesRouter = router({
       }
 
       // Check if target class is full
-      const [{ count }] = await ctx.db
-        .select({ count: sql<number>`count(*)` })
-        .from(bookings)
-        .where(
-          and(eq(bookings.classId, targetClass.id), eq(bookings.status, "booked")),
-        );
-
-      const targetIsFull = Number(count) >= targetClass.capacity;
-
+     const targetTotalBooked = await getTotalBookedCountForClass(ctx.db, targetClass.id);
+     const targetIsFull = targetTotalBooked >= targetClass.capacity;
+     
       return {
         valid: true,
         targetIsFull,
